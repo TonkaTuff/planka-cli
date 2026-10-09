@@ -46,7 +46,7 @@ import sys, json
 data = json.load(sys.stdin)
 lists = data.get('included', {}).get('lists', data.get('lists', []))
 if isinstance(lists, list):
-    for l in sorted(lists, key=lambda x: x.get('position', 0)):
+    for l in sorted((x for x in lists if x.get('position') is not None), key=lambda x: x['position']):
         print(f\"{l['id']}\t{l['name']}\")
 elif isinstance(lists, dict):
     for lid, l in lists.items():
@@ -93,7 +93,7 @@ elif isinstance(cards, dict):
         payload=$(python3 -c "
 import json, sys
 name, desc = sys.argv[1], sys.argv[2]
-d = {'name': name, 'position': 65535}
+d = {'name': name, 'position': 65535, 'type': 'project'}
 if desc:
     d['description'] = desc
 print(json.dumps(d))
@@ -152,7 +152,7 @@ print(f\"Updated: {item.get('id','?')} — {item.get('name','?')}\")
         card_id="${1:?Usage: planka.sh comment <card_id> \"text\"}"
         text="${2:?Usage: planka.sh comment <card_id> \"text\"}"
         payload=$(python3 -c "import json, sys; print(json.dumps({'text': sys.argv[1]}))" "$text")
-        _post "cards/$card_id/comment-actions" "$payload" | python3 -c "
+        _post "cards/$card_id/comments" "$payload" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 item = data.get('item', data)
@@ -210,12 +210,12 @@ elif isinstance(labels, dict):
             echo "Error: label '$label_name' not found on board. Use 'planka.sh labels' to see available labels." >&2
             exit 1
         fi
-        _post "cards/$card_id/labels" "{\"labelId\":\"$label_id\"}" | python3 -c "
+        _post "cards/$card_id/card-labels" "{\"labelId\":\"$label_id\"}" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 item = data.get('item', data)
 print(f\"Label added: {item.get('id', '?')} → card $card_id\")
-" 2>/dev/null || echo "Label '$label_name' added to card $card_id"
+" || { echo "Error: failed to add label '$label_name' to card $card_id" >&2; exit 1; }
         ;;
 
     list-cards)
