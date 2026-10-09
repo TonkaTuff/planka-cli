@@ -116,6 +116,14 @@ data = json.load(sys.stdin)
 item = data.get('item', data)
 print(f\"Created: {item.get('id', '?')} — {item.get('name', '?')}\")
 "
+        # Add the creating account as a card member, so "filter by members" shows who made it.
+        # A failure only warns: the card already exists.
+        if [[ -n "$card_id" ]]; then
+            me_id=$(_get "users/me" | python3 -c "import sys, json; print(json.load(sys.stdin)['item']['id'])") || me_id=""
+            if [[ -z "$me_id" ]] || ! _post "cards/$card_id/card-memberships" "{\"userId\":\"$me_id\"}" >/dev/null; then
+                echo "Warning: card $card_id created but could not add yourself as a member" >&2
+            fi
+        fi
         # If --label was given, attach it
         if [[ -n "$label_name" && -n "$card_id" ]]; then
             "$0" label "$card_id" "$label_name"
