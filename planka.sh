@@ -14,7 +14,7 @@
 #   ./scripts/planka.sh labels                                         # List board labels
 #   ./scripts/planka.sh label <card_id> <label_name>                   # Add label to card (by name)
 #
-# Config: reads PLANKA_URL and PLANKA_TOKEN from environment or config.env
+# Config: reads PLANKA_URL, PLANKA_BOARD_ID and PLANKA_API_KEY (or PLANKA_TOKEN) from environment or config.env
 
 set -euo pipefail
 
@@ -26,11 +26,16 @@ if [ -f "$SCRIPT_DIR/config.env" ]; then
 fi
 
 : "${PLANKA_URL:?Set PLANKA_URL in config.env}"
-: "${PLANKA_TOKEN:?Set PLANKA_TOKEN in config.env}"
 : "${PLANKA_BOARD_ID:?Set PLANKA_BOARD_ID in config.env}"
 
 API="$PLANKA_URL/api"
-AUTH="Authorization: Bearer $PLANKA_TOKEN"
+# PLANKA_API_KEY (Planka 2.x per-user key, X-API-Key header) wins over PLANKA_TOKEN (login token).
+if [ -n "${PLANKA_API_KEY:-}" ]; then
+    AUTH="X-API-Key: $PLANKA_API_KEY"
+else
+    : "${PLANKA_TOKEN:?Set PLANKA_API_KEY or PLANKA_TOKEN in config.env}"
+    AUTH="Authorization: Bearer $PLANKA_TOKEN"
+fi
 
 _get()  { curl -sf -H "$AUTH" "$API/$1"; }
 _post() { curl -sf -H "$AUTH" -H "Content-Type: application/json" -X POST -d "$2" "$API/$1"; }
